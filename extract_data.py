@@ -1,14 +1,12 @@
 from pdfminer.high_level import extract_text
 from pprint import pprint
 
-def extract_course_data(pdf_path):
-    text = extract_text(pdf_path)
-    return text
-
 def clean_line(line):
     return line.lstrip("•·").strip()
 
-def parse_course_pdf(text):
+def parse_course_pdf(pdf_path):
+    text = extract_text(pdf_path)
+
     lines = [clean_line(line) for line in text.splitlines() if clean_line(line)]
     course = {}
 
@@ -65,7 +63,6 @@ def parse_course_pdf(text):
     
     course["skills"] = extract_skills(lines)
     
-    # Extract course description (everything between heading and Class ID)
     def extract_description(lines):
         desc = []
         in_section = False
@@ -82,7 +79,3 @@ def parse_course_pdf(text):
     course["description"] = extract_description(lines)
     return course
 
-path = 'class_140_enchanted_yarn_sculpting_crafting_mythical_creatures.pdf'
-text = extract_course_data(path)
-
-pprint(parse_course_pdf(text))
