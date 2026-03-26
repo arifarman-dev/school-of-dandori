@@ -7,9 +7,9 @@ st.title("🌘 School of Dandori — Course Finder")
 st.write("Find your next whimsical adventure")
 
 def load_data():
-    if not os.path.exists("XXX.csv"):
+    if not os.path.exists("courses.csv"):
         return pd.DataFrame()
-    return pd.read_csv("XXX.csv")
+    return pd.read_csv("courses.csv")
 
 df = load_data()
 
@@ -18,7 +18,7 @@ def get_courses(search_term="", location="", date=""):
 
     if search_term:
         filtered = filtered[
-            filtered["course_name"].str.contains(search_term, case=False, na=False) |
+            filtered["title"].str.contains(search_term, case=False, na=False) |
             filtered["description"].str.contains(search_term, case=False, na=False) |
             filtered["category"].str.contains(search_term, case=False, na=False)
         ]
@@ -49,7 +49,7 @@ if courses.empty:
 
 else:
     for _, row in courses.iterrows():
-        with st.expander(f"{row['course_name']} — {row['location']} — £{row['price_gbp']}"):
+        with st.expander(f"{row['title']} — {row['location']} — £{row['price_gbp']}"):
             st.write(f"**Instructor:** {row['instructor']}")
             st.write(f"**Date:** {row['date']}")
             st.write(f"**Time:** {row['time']}")
