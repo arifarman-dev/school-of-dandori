@@ -1,8 +1,10 @@
 from google.cloud import firestore
+import streamlit as st
 import pandas as pd
 
 db = firestore.Client(project="buoyant-world-491810-n6")
 
+@st.cache_data(ttl=300) 
 def read_course_from_firestore(class_id, title):
     """
     Reads a single course document from the 'courses' collection in Firestore.
@@ -29,6 +31,7 @@ def get_nb_courses():
         firestore_doc_count += 1
     print(f"Number of documents in Firestore 'courses' collection: {firestore_doc_count}")
 
+@st.cache_data(ttl=300) 
 def get_all_courses_from_firestore():
     """
     Retrieves all course documents from the 'courses' collection in Firestore.
