@@ -1,5 +1,6 @@
-from openai import OpenAI
+import streamlit as st
 import pandas as pd
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
@@ -12,8 +13,7 @@ client = OpenAI(
 # load the csv into a dataframe
 df = pd.read_csv("courses.csv")
 
-
-#build a prompt for the LLM
+# build a prompt for the LLM
 def build_system_prompt(df):
     course_list = ""
     for _, row in df.iterrows():
@@ -60,3 +60,9 @@ while True:
     messages.append({"role": "assistant", "content": response})
     
     print(f"\nAdvisor: {response}\n")
+
+#------------ streamlit page -----------------------
+
+st.set_page_config(page_title="Course Advisor", page_icon="🌘")
+st.title("🌘 Course Advisor")
+st.write("Tell me what you're looking for and I'll help you find the perfect course")
