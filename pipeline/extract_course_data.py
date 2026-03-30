@@ -1,6 +1,6 @@
 from pathlib import Path
 from google.cloud import firestore
-from extract_data import parse_course_pdf
+from pipeline.extract_data import parse_course_pdf
 
 db = firestore.Client(project="buoyant-world-491810-n6")
 
@@ -35,4 +35,4 @@ def parse_and_upload_all(folder_path):
     
     print(f"Done — {len(pdf_files)} courses uploaded")
 
-parse_and_upload_all("data")
+# parse_and_upload_all("data")
