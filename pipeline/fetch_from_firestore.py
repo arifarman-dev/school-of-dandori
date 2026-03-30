@@ -3,7 +3,7 @@ import pandas as pd
 
 db = firestore.Client(project="buoyant-world-491810-n6")
 
-def read_course_from_firestore(class_id):
+def read_course_from_firestore(class_id, title):
     """
     Reads a single course document from the 'courses' collection in Firestore.
     Args:
@@ -11,7 +11,7 @@ def read_course_from_firestore(class_id):
     Returns:
         A dictionary containing the course data if found, otherwise None.
     """
-    doc_ref = db.collection("courses").document(class_id)
+    doc_ref = db.collection("courses").document(class_id + " " + title)
     doc = doc_ref.get()
 
     if doc.exists:
