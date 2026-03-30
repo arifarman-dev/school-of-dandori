@@ -37,7 +37,7 @@ def build_system_prompt(df):
 
 def chat(messages, system_prompt):
     response = client.chat.completions.create(
-        model="mistralai/mistral-7b-instruct",
+        model="mistralai/mistral-small-2603",
         messages=[{"role": "system", "content": system_prompt}] + messages
     )
     return response.choices[0].message.content
