@@ -16,7 +16,7 @@ df = load_data()
 # get list of all locations
 all_locations = df['location'].dropna().unique()
 
-def get_courses(search_term="", location="", course_type=""):
+def get_courses(selected_min, selected_max, search_term="", location="", course_type=""):
     filtered = df.copy()
 
     if search_term:
@@ -36,15 +36,30 @@ def get_courses(search_term="", location="", course_type=""):
             filtered["course_type"].str.contains(course_type, case=False, na=False)
         ]
 
+    filtered = filtered[(filtered["cost"] >= selected_min) & (filtered["cost"] <= selected_max)]
+
     return filtered
 
+def get_min_max_cost(courses):
+    cost = {}
+    cost[min] = min(courses["cost"])
+    cost[max] = max(courses["cost"])
+    return cost
 
 st.sidebar.header("Search & Filter")
 search_term = st.sidebar.text_input("Keyword search", placeholder="e.g. pottery, yoga, painting")
 location = st.sidebar.selectbox("Location", ["All locations"] + sorted(all_locations.tolist()), placeholder="e.g. Oxford")
 course_type = st.sidebar.text_input("Course type", placeholder="e.g. Mindfulness, Fiber Arts")
+cost = get_min_max_cost(df)
+min_cost = cost[min]
+max_cost = cost[max]
 
-courses = get_courses(search_term, location, course_type)
+slider = st.sidebar.slider("Price Range £", min_value=int(min_cost), max_value=int(max_cost),
+                   value=(int(min_cost), int(max_cost)), step=1)
+    
+selected_min = slider[0]
+selected_max = slider[1]
+courses = get_courses(selected_min, selected_max, search_term, location, course_type)
 
 st.write(f"**{len(courses)} courses found**")
 if courses.empty:
