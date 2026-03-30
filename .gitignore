@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# account_key
+google_account_key.json
+
 # C extensions
 *.so
 
