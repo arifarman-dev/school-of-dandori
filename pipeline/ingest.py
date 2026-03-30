@@ -2,8 +2,9 @@ import pandas as pd
 import chromadb
 from chromadb import EmbeddingFunction, Embeddings, Documents
 from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+from fetch_from_firestore import get_all_courses_from_firestore
 
-df = pd.read_csv("courses.csv")
+df = get_all_courses_from_firestore()
 
 # Combine fields into a rich text chunk per course
 def make_chunk(row):
