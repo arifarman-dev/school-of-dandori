@@ -282,10 +282,6 @@ if user_input := st.chat_input("Type here..."):
             st.session_state.messages.append({"role": "assistant", "content": feedback + " " + next_q})
         else:
             st.session_state.discovery_complete = True
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": "Perfect! Searching for the best courses now..."
-            })
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 with st.spinner("Thinking... 🤔"):
@@ -305,7 +301,6 @@ if user_input := st.chat_input("Type here..."):
             relevant_courses = get_relevant_courses(query)
             response = chat(st.session_state.messages, relevant_courses)
             st.session_state.messages.append({"role": "assistant", "content": response})
-        # with st.chat_message("assistant"):
-        #     display_response_with_cards(response, )
+
 
     st.rerun()
