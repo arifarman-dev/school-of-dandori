@@ -57,12 +57,12 @@ def extract_filters(user_message):
 # --- RAG function ---
 def get_relevant_courses(question, n_results=15):
     filters = extract_filters(question)
-    
+
     # build chromadb where clause from extracted filters
     where_conditions = []
 
     if filters.get("location"):
-        where_conditions.append({"location": {"$eq": filters["location"]}})
+        where_conditions.append({"location": {"$eq": filters["location"].title()}})
 
     if filters.get("max_cost"):
         where_conditions.append({"cost": {"$lte": filters["max_cost"]}})
