@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import chromadb
 from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+import json
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
@@ -22,9 +23,67 @@ client = OpenAI(
 # load the csv into a dataframe
 df = pd.read_csv("courses.csv")
 
+# initial prompt to the llm to extract metadata from the users inital input
+def extract_filters(user_message):
+    response = client.chat.completions.create(
+        model="mistralai/mistral-small-2603",
+        messages=[{
+            "role": "user",
+            "content": f"""You are helping to identify search filters from messages from users looking for courses in the UK.
+
+            Extract any of the following from the message:
+            - location: a UK town, city, or region
+            - max_cost: a maximum budget as a number only (no £ symbol)
+            - course_type: the type of course (e.g. Mindfulness, Crafts, Nature)
+            - skills: any skills the user mentions (e.g. painting, pottery, yoga)
+
+            Return ONLY a JSON object with these fields. Use null if not mentioned.
+
+            Examples:
+            "I want something in Windsor under £50" -> {{"location": "Windsor", "max_cost": 50, "course_type": null, "skills": null}}
+            "a mindfulness class" -> {{"location": null, "max_cost": null, "course_type": "Mindfulness", "skills": null}}
+            "something creative" -> {{"location": null, "max_cost": null, "course_type": null, "skills": "creative"}}
+            "yoga near Bath for under £40" -> {{"location": "Bath", "max_cost": 40, "course_type": null, "skills": "yoga"}}
+
+            Message: {user_message}"""
+        }]
+    )
+
+    try:
+        return json.loads(response.choices[0].message.content.strip())
+    except:
+        return {"location": None, "max_cost": None, "course_type": None, "skills": None}
+
 # --- RAG function ---
 def get_relevant_courses(question, n_results=15):
-    results = collection.query(query_texts=[question], n_results=n_results)
+    filters = extract_filters(question)
+    
+    # build chromadb where clause from extracted filters
+    where_conditions = []
+
+    if filters.get("location"):
+        where_conditions.append({"location": {"$eq": filters["location"]}})
+
+    if filters.get("max_cost"):
+        where_conditions.append({"cost": {"$lte": filters["max_cost"]}})
+
+    if filters.get("course_type"):
+        where_conditions.append({"course_type": {"$eq": filters["course_type"]}})
+
+    # apply filters if any were found
+    if where_conditions:
+        where = {"$and": where_conditions} if len(where_conditions) > 1 else where_conditions[0]
+        results = collection.query(
+            query_texts=[question],
+            n_results=n_results,
+            where=where
+        )
+    else:
+        results = collection.query(
+            query_texts=[question],
+            n_results=n_results
+        )
+
     return "\n\n---\n\n".join(results["documents"][0])
 
 # --- Chat function ---
