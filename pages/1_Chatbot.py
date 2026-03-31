@@ -25,8 +25,8 @@ def add_to_bag(course_id, course_title):
 
 # --- Configuration ---
 DISCOVERY_QUESTIONS = [
-    "Before we dive in, which location works best for you? (Brighton, Bath, or Windsor?)",
-    "And what are you most interested in? (e.g., Crafting, Yoga, Knitting, or something else?)",
+    "Before we dive in, which location works best for you? (e.g., Brighton, Bath, or Windsor)",
+    "And what are you most interested in? (e.g., Crafting, Yoga, Knitting, or something else)",
 ]
 
 # --- Initialize Session State ---
@@ -36,8 +36,6 @@ if "discovery_answers" not in st.session_state:
     st.session_state.discovery_answers = {}
 if "discovery_complete" not in st.session_state:
     st.session_state.discovery_complete = False
-
-load_dotenv()
 
 with st.sidebar:
     if st.button("🔄 Sync with Firestore"):
@@ -133,7 +131,7 @@ def extract_filters(user_message):
 # --- RAG function ---
 def get_relevant_courses(question, n_results=15):
     filters = extract_filters(question)
-    print(filters)
+    
     # build chromadb where clause from extracted filters
     where_conditions = []
 
@@ -288,17 +286,26 @@ if user_input := st.chat_input("Type here..."):
                 "role": "assistant", 
                 "content": "Perfect! Searching for the best courses now..."
             })
-            relevant_courses = get_relevant_courses("Location: " + str(st.session_state.discovery_answers['location']).title() + user_input)
-            response = chat(st.session_state.messages, relevant_courses)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                with st.spinner("Thinking... 🤔"):
+                    relevant_courses = get_relevant_courses("Location: " + str(st.session_state.discovery_answers['location']).title() + user_input)
+                    response = chat(st.session_state.messages, relevant_courses)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                message_placeholder.markdown(response)
     
     else:
         # 3. NORMAL RAG CHAT MODE
         # Use the discovery_answers to help filter your search!
-        relevant_courses = get_relevant_courses(user_input)
-        response = chat(st.session_state.messages, relevant_courses)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        location_str = ", ".join(st.session_state.discovery_answers['location'])
+        query = f"Location: {location_str}. Interest: {user_input}"
         with st.chat_message("assistant"):
-            display_response_with_cards(response)
+            message_placeholder = st.empty()
+        with st.spinner("Thinking... 🤔"):
+            relevant_courses = get_relevant_courses(query)
+            response = chat(st.session_state.messages, relevant_courses)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        # with st.chat_message("assistant"):
+        #     display_response_with_cards(response, )
 
     st.rerun()
