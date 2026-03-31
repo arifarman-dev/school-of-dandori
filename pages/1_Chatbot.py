@@ -14,11 +14,18 @@ load_dotenv()
 if "shopping_bag" not in st.session_state:
     st.session_state.shopping_bag = []
 
-def add_to_bag(course_id, course_title):
+def add_to_bag(course_data):
     # Check if already added
-    if course_id not in [item['id'] for item in st.session_state.shopping_bag]:
-        st.session_state.shopping_bag.append({"id": course_id, "title": course_title})
-        st.toast(f"✅ Added {course_title} to your bag!")
+    if course_data["class_id"] not in [item['id'] for item in st.session_state.shopping_bag]:
+        st.session_state.shopping_bag.append({
+            "id": course_data["class_id"], 
+            "title": course_data["title"], 
+            "location": course_data["location"],
+            "instructor": course_data["instructor"],
+            "description" : course_data["description"],
+            "cost" : course_data["cost"]
+            })
+        st.toast(f"✅ Added {course_data["title"]} to your bag!")
     else:
         st.toast("💡 That course is already in your bag.")
 
@@ -170,7 +177,7 @@ def get_relevant_courses(question, n_results=15):
 
 def display_response_with_cards(text, idx):
     st.markdown(text)
-    found_ids = re.findall(r'CLASS_\d+', text)
+    found_ids = set(re.findall(r'CLASS_\d+', text))
     
     if found_ids:
         st.write("---")
@@ -189,7 +196,7 @@ def display_response_with_cards(text, idx):
                         st.caption(f"📍 {row['location']} | 💰 £{row['cost']}")
                     with col2:
                         if st.button("🛒 Add", key=f"btn_{cid}_{idx}"):
-                            add_to_bag(cid, row['title'])
+                            add_to_bag(row)
 
 
 
