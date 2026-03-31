@@ -7,8 +7,22 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 from pipeline.ingest import sync_all
-
+import re
 load_dotenv()
+
+# Initialize bag in session state
+if "shopping_bag" not in st.session_state:
+    st.session_state.shopping_bag = []
+
+def add_to_bag(course_id, course_title):
+    # Check if already added
+    if course_id not in [item['id'] for item in st.session_state.shopping_bag]:
+        st.session_state.shopping_bag.append({"id": course_id, "title": course_title})
+        st.toast(f"✅ Added {course_title} to your bag!")
+    else:
+        st.toast("💡 That course is already in your bag.")
+
+
 # --- Configuration ---
 DISCOVERY_QUESTIONS = [
     "Before we dive in, which location works best for you? (Brighton, Bath, or Windsor?)",
@@ -153,6 +167,34 @@ def get_relevant_courses(question, n_results=15):
 
     return "\n\n---\n\n".join(results["documents"][0])
 
+
+
+
+def display_response_with_cards(text, idx):
+    st.markdown(text)
+    found_ids = re.findall(r'CLASS_\d+', text)
+    
+    if found_ids:
+        st.write("---")
+        st.caption("✨ **Quick Add to Bag:**")
+        
+        for cid in list(found_ids):
+            course_data = df[df['class_id'] == cid]
+            
+            if not course_data.empty:
+                row = course_data.iloc[0]
+                
+                with st.container(border=True):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"**{row['title']}**")
+                        st.caption(f"📍 {row['location']} | 💰 £{row['cost']}")
+                    with col2:
+                        if st.button("🛒 Add", key=f"btn_{cid}_{idx}"):
+                            add_to_bag(cid, row['title'])
+
+
+
 # --- Chat function ---
 def chat(messages, relevant_courses):
     answers = st.session_state.discovery_answers
@@ -201,9 +243,12 @@ if st.button("Start new conversation"):
 
 
 # --- Display conversation history ---
-for message in st.session_state.messages:
+for idx, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
-        st.write(message["content"])
+        if message["role"] == "assistant":
+            display_response_with_cards(message["content"], idx)
+        else:
+            st.write(message["content"])
 
 # --- Handle Input ---
 if user_input := st.chat_input("Type here..."):

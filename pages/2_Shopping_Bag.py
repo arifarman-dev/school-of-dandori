@@ -1,0 +1,27 @@
+import streamlit as st
+
+st.set_page_config(page_title="Your Bag", page_icon="🛒")
+st.title("🛒 Your Shopping Bag")
+
+if "shopping_bag" not in st.session_state or not st.session_state.shopping_bag:
+    st.info("Your bag is empty. Go talk to the Course Advisor to find some classes!")
+    if st.button("Go to Advisor"):
+        st.switch_page("pages/1_Chatbot.py") 
+else:
+    for idx, item in enumerate(st.session_state.shopping_bag):
+        with st.container(border=True):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.subheader(item['title'])
+                st.caption(f"Class ID: {item['id']}")
+            with col2:
+                if st.button("Remove", key=f"remove_{idx}"):
+                    st.session_state.shopping_bag.pop(idx)
+                    st.rerun()
+
+    st.divider()
+    st.success(f"Total Items: {len(st.session_state.shopping_bag)}")
+    
+    if st.button("Proceed to Checkout"):
+        st.balloons()
+        st.write("Redirecting to payment... (Integration coming soon!)")
