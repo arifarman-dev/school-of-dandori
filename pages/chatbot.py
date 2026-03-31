@@ -6,8 +6,30 @@ import json
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+from pipeline.ingest import sync_all
 
 load_dotenv()
+# --- Configuration ---
+DISCOVERY_QUESTIONS = [
+    "Before we dive in, which location works best for you? (Brighton, Bath, or Windsor?)",
+    "And what are you most interested in? (e.g., Crafting, Yoga, Knitting, or something else?)",
+]
+
+# --- Initialize Session State ---
+if "question_idx" not in st.session_state:
+    st.session_state.question_idx = 0
+if "discovery_answers" not in st.session_state:
+    st.session_state.discovery_answers = {}
+if "discovery_complete" not in st.session_state:
+    st.session_state.discovery_complete = False
+
+load_dotenv()
+
+with st.sidebar:
+    if st.button("🔄 Sync with Firestore"):
+        with st.spinner("Syncing latest courses..."):
+            db_info = sync_all()
+            st.success(f"Database Synced")
 
 # --- Clients ---
 chroma_client = chromadb.PersistentClient(path="./chroma_store")
@@ -21,7 +43,42 @@ client = OpenAI(
     api_key=st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
 )
 # load the csv into a dataframe
-df = pd.read_csv("courses.csv")
+df = pd.read_csv("./data/courses.csv")
+
+REGION_MAP = {
+    "south west": ["bristol", "bath", "exeter", "gloucester", "plymouth", "cheltenham"],
+    "london": ["london", "greater london", "central london", "hackney", "camden"],
+    "south east": ["brighton", "oxford", "reading", "southampton", "canterbury"],
+    "midlands": ["birmingham", "coventry", "leicester", "nottingham"],
+    "north west": ["manchester", "liverpool", "salford"]
+}
+
+def validate_location(user_input):
+    """
+    Returns (is_valid, matched_locations, message)
+    """
+    user_input_clean = user_input.strip().lower()
+    
+    # 1. Direct Match (Exact city/location name)
+    # Check if any available location (lowercase) matches user input
+    unique_locations = df['location'].str.lower().unique().tolist()
+    direct_matches = [loc for loc in unique_locations if loc.lower() == user_input_clean]
+    if direct_matches:
+        return True, direct_matches, f"Perfect! We have several courses in {direct_matches[0].title()}."
+
+    # 2. Region Match
+    if user_input_clean in REGION_MAP:
+        region_cities = REGION_MAP[user_input_clean]
+        # Find which cities in that region actually have courses
+        matches = [loc for loc in unique_locations if loc in region_cities]
+        
+        if matches:
+            return True, matches, f"Great! In the {user_input.title()}, we have courses available in: {', '.join(matches).title()}."
+        else:
+            return False, [], f"We do have courses in the {user_input.title()}, but unfortunately not in any locations currently listed."
+
+    # 3. Outside UK / Invalid
+    return False, [], "I'm sorry, we currently only offer courses within specific UK regions. We don't have anything available in that area right now."
 
 # initial prompt to the llm to extract metadata from the users inital input
 def extract_filters(user_message):
@@ -94,14 +151,19 @@ def get_relevant_courses(question, n_results=15):
 
 # --- Chat function ---
 def chat(messages, relevant_courses):
-    system = """You are a friendly course advisor for the School of Dandori,
+    answers = st.session_state.discovery_answers
+    system = f"""You are a friendly course advisor for the School of Dandori,
                 an adult education platform offering playful and creative evening and weekend classes.
                 Your job is to help users find the right course through friendly conversation.
                 Ask follow up questions to understand what they're looking for — such as location,
                 budget, interests, or what kind of experience they want.
                 Use only the course information provided to make recommendations.
                 If no courses match, say so honestly. Always mention the Class ID when recommending a course.
-                Never make up courses that aren't in the provided list."""
+                Never make up courses that aren't in the provided list.
+                The user has already provided this context:
+                - Preferred Location: {answers.get('location')}
+                - Interests: {answers.get('interests')}
+                """
 
     # inject the relevant courses into the last user message
     augmented_messages = messages[:-1] + [{
@@ -123,33 +185,69 @@ st.write("Tell me what you're looking for and I'll help you find the perfect cou
 
 # --- Initialise session state ---
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [{"role": "assistant", "content": DISCOVERY_QUESTIONS[0]}]
 
 # --- Clear conversation button ---
 if st.button("Start new conversation"):
-    st.session_state.messages = []
+    st.session_state.messages = [{"role": "assistant", "content": DISCOVERY_QUESTIONS[0]}]
+    st.session_state.question_idx = 0
+    st.session_state.discovery_answers = {}
+    st.session_state.discovery_complete = False
+    st.rerun()
+
 
 # --- Display conversation history ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# --- Handle new input ---
-if user_input := st.chat_input("What kind of course are you looking for?"):
-
-    # Add and display user message
+# --- Handle Input ---
+if user_input := st.chat_input("Type here..."):
+    
+    # 1. ADD USER MESSAGE TO UI
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.write(user_input)
 
-    # Get relevant courses from ChromaDB
-    relevant_courses = get_relevant_courses(user_input)
+    # 2. ARE WE STILL IN DISCOVERY?
+    if not st.session_state.discovery_complete:
+        # Store the answer to the PREVIOUS question
+        current_q_idx = st.session_state.question_idx
+        if current_q_idx == 0: 
+            is_valid, matches, feedback = validate_location(user_input)
+            
+            if is_valid:
+                # Save the specific locations found for filtering later
+                st.session_state.discovery_answers['location'] = matches
+                # st.session_state.messages.append({"role": "assistant", "content": feedback})
+                st.session_state.question_idx += 1 
+            else:
+                st.session_state.messages.append({"role": "assistant", "content": feedback + " Could you try a different location?"})
+                st.rerun()
+        elif current_q_idx < len(DISCOVERY_QUESTIONS):
+            key_map = ["location", "interests"]
+            key = key_map[current_q_idx]
+            st.session_state.discovery_answers[key] = user_input
+            st.session_state.question_idx += 1
 
-    # Get and display assistant response
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
+        # --- PHASE 3: CHECK IF WE JUST FINISHED ---
+        if st.session_state.question_idx < len(DISCOVERY_QUESTIONS):
+            next_q = DISCOVERY_QUESTIONS[st.session_state.question_idx]
+            st.session_state.messages.append({"role": "assistant", "content": feedback + " " + next_q})
+        else:
+            st.session_state.discovery_complete = True
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": "Perfect! Searching for the best courses now..."
+            })
+            # Trigger the first RAG response immediately
+            relevant_courses = get_relevant_courses(user_input)
             response = chat(st.session_state.messages, relevant_courses)
-            st.write(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    else:
+        # 3. NORMAL RAG CHAT MODE
+        # Use the discovery_answers to help filter your search!
+        relevant_courses = get_relevant_courses(user_input)
+        response = chat(st.session_state.messages, relevant_courses)
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
-    # Add assistant response to history
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.rerun()

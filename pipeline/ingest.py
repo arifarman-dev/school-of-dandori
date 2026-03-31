@@ -2,11 +2,9 @@ import pandas as pd
 import chromadb
 from chromadb import EmbeddingFunction, Embeddings, Documents
 from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
-from fetch_from_firestore import get_all_courses_from_firestore
+from pipeline.fetch_from_firestore import get_all_courses_from_firestore
 
-def ingest_data():
-    df = get_all_courses_from_firestore()
-
+def ingest_data(df):
     def format_list(item):
         """Helper to handle list fields safely for text and metadata."""
         if isinstance(item, list):
@@ -46,7 +44,6 @@ def ingest_data():
             "skills": skills_str  
         })
 
-        # Use actual class_id as the ID to prevent duplicates
         ids.append(str(i))
 
     # ChromaDB Operations
@@ -64,5 +61,19 @@ def ingest_data():
     )
     print(f"Ingested {len(chunks)} courses into ChromaDB")
 
+
+def sync_all():
+    """Fetches from Firestore, updates Chroma, and saves a local CSV."""
+    print("🔄 Starting full sync from Firestore...")
+    df = get_all_courses_from_firestore()
+
+    if df.empty:
+        return 0
+
+    df.to_csv("./data/courses.csv", index=False)
+    print("💾 Local CSV cache updated.")
+    ingest_data(df)
+
+
 if __name__ == "__main__":
-    ingest_data()
+    sync_all()
