@@ -8,6 +8,7 @@ google_account_key.json
 
 # secret
 .streamlit/secrets.toml
+pipeline/.streamlit/secrets.toml
 
 # C extensions
 *.so
