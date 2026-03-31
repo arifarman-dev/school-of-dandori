@@ -4,7 +4,6 @@ from pipeline.extract_course_data import write_course_to_firestore
 from auth import require_auth
 
 
-st.write("debug: reached admin_page")
 require_auth()  # blocks everything below if not logged in
 
 st.title("Admin")
@@ -12,8 +11,6 @@ st.title("Admin")
 if st.button("Logout"):
     st.session_state["authenticated"] = False
     st.rerun()
-
-
 
 
 def manual_course_form():
