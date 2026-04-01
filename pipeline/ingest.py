@@ -26,6 +26,7 @@ def ingest_data(df):
             Instructor: {row['instructor']}\n
             Type: {row['course_type']}\n
             Location: {row['location']}\n
+            Cost: £{row['cost']}\n
             Skills: {skills_str}\n
             Objectives: {objectives_str}\n
             Description: {row['description']}\n

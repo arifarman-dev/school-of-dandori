@@ -12,6 +12,15 @@ def write_course_to_firestore(course: dict):
         "updated_at": firestore.SERVER_TIMESTAMP,
     })
 
+def update_course_in_firestore(old_class_id, old_title, course: dict):
+    old_id = old_class_id + " " + old_title
+    new_id = course["class_id"] + " " + course["title"]
+
+    if old_id != new_id:
+        db.collection("courses").document(old_id).delete()
+
+    write_course_to_firestore(course)
+
 def parse_and_upload_all(folder_path):
     pdf_files = list(Path(folder_path).glob("*.pdf"))
     

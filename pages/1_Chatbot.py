@@ -47,7 +47,8 @@ if "discovery_complete" not in st.session_state:
 with st.sidebar:
     if st.button("🔄 Sync with Firestore"):
         with st.spinner("Syncing latest courses..."):
-            db_info = sync_all()
+            sync_all()
+            st.session_state.df = pd.read_csv("./data/courses.csv")
             st.success(f"Database Synced")
 
 # --- Clients ---
@@ -62,7 +63,10 @@ client = OpenAI(
     api_key=st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
 )
 # load the csv into a dataframe
-df = pd.read_csv("./data/courses.csv")
+if "df" not in st.session_state:
+    st.session_state.df = pd.read_csv("./data/courses.csv")
+
+df = st.session_state.df 
 
 REGION_MAP = {
     "south west": ["bristol", "bath", "exeter", "gloucester", "plymouth", "cheltenham"],
