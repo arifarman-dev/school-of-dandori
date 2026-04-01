@@ -17,7 +17,7 @@ else:
             col1, col2 = st.columns([4, 1])
             with col1:
                 st.subheader(item['title'])
-                st.caption(f"Class ID: {item['id']}")
+                st.caption(f"Class ID: {item['class_id']}")
                 st.write(f"**Location**: {item['location']} | **Instructor**: {item['instructor']}")
 
             with col2:
