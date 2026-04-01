@@ -8,7 +8,7 @@ def render_sidebar():
         if st.button("🔄 Sync with Firestore"):
             with st.spinner("Syncing latest courses..."):
                 sync_all()
-                st.session_state.pop("courses_df", None)
+                st.session_state.pop("df", None)
                 st.session_state.df = pd.read_csv("./data/courses.csv")
             msg = st.success("Database synced")
             time.sleep(5)

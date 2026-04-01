@@ -13,6 +13,11 @@ import re
 load_dotenv()
 render_sidebar()
 
+
+if "df" not in st.session_state:
+    sync_all()
+    st.session_state.df = pd.read_csv("./data/courses.csv")
+
 # Initialize bag in session state
 if "shopping_bag" not in st.session_state:
     st.session_state.shopping_bag = []
